@@ -843,7 +843,7 @@
       function updateUIWithData(data, trackingId) {
         data = removeDirectives(data)
 
-        //console.log("updateUIWithData: ", data, trackingId)
+        console.log("updateUIWithData: ", data, trackingId)
         // Hide the before-track view
         var beforeTrackView = document.getElementById('before-track');
         beforeTrackView.style.display = 'none';
@@ -867,7 +867,7 @@
         var orderNo = trackingId//data.invoiceNumber || "N/A";
         var package = data["Package_content.text"] || "N/A";
         var shipmentDate = data["Invoice_date.date"] ? formatDate(data["Invoice_date.date"]) : "N/A";
-        var expectedDate = data["Shipment_date.date"] ? formatDate(data["Shipment_date.date"]) : "N/A";
+        var expectedDate = data["expected_arrival_date.date"] ? formatDate(data["expected_arrival_date.date"]) : "N/A";
         var destination = data["Recipient_address.text"];
         var status = data["Shipping_Status.select"] || "N/A";
         var statusText = ""
