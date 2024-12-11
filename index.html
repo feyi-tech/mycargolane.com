@@ -821,7 +821,7 @@
         for (const key in obj) {
             if (obj.hasOwnProperty(key)) {
                 // Split the key by "." to separate the directive (if any)
-                if(!key.includes(".")) {
+                if(!key.includes(".") || !key.includes("@")) {
                   result[key] = obj[key];
                   continue
                 }
@@ -869,7 +869,7 @@
         var shipmentDate = data["Invoice_date.date"] ? formatDate(data["Invoice_date.date"]) : "N/A";
         var expectedDate = data["Shipment_date.date"] ? formatDate(data["Shipment_date.date"]) : "N/A";
         var destination = data["Recipient_address.text"];
-        var status = data["shipping_status.text_select"] || "N/A";
+        var status = data["Shipping_Status.select"] || "N/A";
         var statusText = ""
         var statusDesc = ""
         let step = -1
