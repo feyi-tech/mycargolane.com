@@ -797,7 +797,7 @@
         // If the tracking ID is not empty, construct the URL
         // If the tracking ID is not empty, construct the URL
         var apiUrl = 'https://us-central1-my-project-223a2.cloudfunctions.net/api/doc?collection=other_tools_data&doc_id=' + encodeURIComponent(trackingId.trim().toUpperCase());
-        var apiUrlOld = 'https://us-central1-my-project-223a2.cloudfunctions.net/api/doc?collection=flights&doc_id=' + encodeURIComponent(trackingId.trim().toUpperCase());
+        var apiUrlOld = 'https://us-central1-my-project-223a2.cloudfunctions.net/api/doc?collection=shipments&doc_id=' + encodeURIComponent(trackingId.trim().toUpperCase());
 
         // Use fetch to send the GET request
         async function trackData() {
