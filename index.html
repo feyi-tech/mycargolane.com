@@ -784,35 +784,42 @@
         }
 
         // If the tracking ID is not empty, construct the URL
+        // If the tracking ID is not empty, construct the URL
         var apiUrl = 'https://us-central1-my-project-223a2.cloudfunctions.net/api/doc?collection=other_tools_data&doc_id=' + encodeURIComponent(trackingId.trim().toUpperCase());
+        var apiUrlOld = 'https://us-central1-my-project-223a2.cloudfunctions.net/api/doc?collection=flights&doc_id=' + encodeURIComponent(trackingId.trim().toUpperCase());
 
         // Use fetch to send the GET request
-        fetch(apiUrl)
-        .then(response => {
-          if (!response.ok) {
-              // If the response is not OK, read the response body
-              return response.json().then(errorData => {
-                    throw new Error(errorData?.error || "A server error occurred. Please try again later.");
+        async function trackData() {
+            try {
+                let response;
+
+                // Attempt to fetch from the main URL
+              try {
+                  response = await fetchData(apiUrl);
+              } catch (error) {
+                  // If the error indicates "invalid", try the old API URL
+                  if (error.message.toLowerCase().includes("invalid")) {
+                      response = await fetchData(apiUrlOld);
+                  } else {
+                      throw error; // Re-throw other errors
+                  }
+              }
+
+              // Process the response
+              updateUIWithData(response.data, trackingId);
+            } catch (error) {
+              // Handle errors and display them in a user-friendly way
+              Swal.fire({
+                  icon: "error",
+                  title: "Tracking Error",
+                  text: error.message.toLowerCase().includes("invalid")? "Invalid Package" : error.message
               });
-          }
-          return response.json();
-        })
-        .then(response => {
-          // You can use the data for further processing or display on the page
-          // For example, update the UI with the fetched data
-          updateUIWithData(response.data, trackingId);
-        })
-        .catch(error => {
-          //console.log("error:::", error)
-          Swal.fire({
-            icon: "error",
-            title: "Tracking Error",
-            text: error.message.toLowerCase().includes("invalid")? "Invalid Package" : error.message
-          });
-        })
-        .finally(() => {
-          isTracking(false)
-        })
+            } finally {
+              // Always stop the tracking indicator
+              isTracking(false);
+            }
+        }
+        trackData();
       }
       
       const removeDirectives = (obj) => {
@@ -841,95 +848,182 @@
       const ql = s => { return document.querySelectorAll(s)}
       // Function to update the UI with the fetched data
       function updateUIWithData(data, trackingId) {
-        data = removeDirectives(data)
+        if(data.template_id) {
+          data = removeDirectives(data)
 
-        //console.log("updateUIWithData: ", data, trackingId)
-        // Hide the before-track view
-        var beforeTrackView = document.getElementById('before-track');
-        beforeTrackView.style.display = 'none';
+          //console.log("updateUIWithData: ", data, trackingId)
+          // Hide the before-track view
+          var beforeTrackView = document.getElementById('before-track');
+          beforeTrackView.style.display = 'none';
 
-        // Show the track_info view
-        var trackInfoView = document.getElementById('track_info');
-        trackInfoView.style.display = 'flex';
+          // Show the track_info view
+          var trackInfoView = document.getElementById('track_info');
+          trackInfoView.style.display = 'flex';
 
-        var waterMark = document.getElementById('water_mark');
-        if(data.is_freemium) {
-          waterMark.style.display = "block"
-          console.log("updateUIWithData:block ", data.is_freemium)
+          var waterMark = document.getElementById('water_mark');
+          if(data.is_freemium) {
+            waterMark.style.display = "block"
+            console.log("updateUIWithData:block ", data.is_freemium)
 
-        } else {
-          waterMark.style.display = "none"
-          console.log("updateUIWithData:none ", data.is_freemium)
-        }
+          } else {
+            waterMark.style.display = "none"
+            console.log("updateUIWithData:none ", data.is_freemium)
+          }
 
 
-        // Fill in information in the track_info view with the data
-        var orderNo = trackingId//data.invoiceNumber || "N/A";
-        var package = data["Package_content.text"] || "N/A";
-        var shipmentDate = data["Invoice_date.date"] ? formatDate(data["Invoice_date.date"]) : "N/A";
-        var expectedDate = data["expected_arrival_date.date"] ? formatDate(data["expected_arrival_date.date"]) : "N/A";
-        var destination = data["Recipient_address.text"];
-        var status = data["Shipping_Status.select"] || "N/A";
-        var statusText = ""
-        var statusDesc = ""
-        let step = -1
-        if(status == "processing") {
-          statusText = "Processing Order"
-          statusDesc = `Your shipment order ${orderNo} has been confirmed and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
-          step = 0
+          // Fill in information in the track_info view with the data
+          var orderNo = trackingId//data.invoiceNumber || "N/A";
+          var package = data["Package_content.text"] || "N/A";
+          var shipmentDate = data["Invoice_date.date"] ? formatDate(data["Invoice_date.date"]) : "N/A";
+          var expectedDate = data["expected_arrival_date.date"] ? formatDate(data["expected_arrival_date.date"]) : "N/A";
+          var destination = data["Recipient_address.text"];
+          var status = data["Shipping_Status.select"] || "N/A";
+          var statusText = ""
+          var statusDesc = ""
+          let step = -1
+          if(status == "processing") {
+            statusText = "Processing Order"
+            statusDesc = `Your shipment order ${orderNo} has been confirmed and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
+            step = 0
 
-        } else if(status == "in_transit") {
-          statusText = "In Transit"
-          statusDesc = `Your shipment order ${orderNo} is out for delivery and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
-          step = 1
+          } else if(status == "in_transit") {
+            statusText = "In Transit"
+            statusDesc = `Your shipment order ${orderNo} is out for delivery and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
+            step = 1
 
-        } else if(status == "delivered") {
-          statusText = "Order Delivered"
-          statusDesc = `Your shipment order ${orderNo} has been delivered. Thank you for choosing us.`
-          step = 2
+          } else if(status == "delivered") {
+            statusText = "Order Delivered"
+            statusDesc = `Your shipment order ${orderNo} has been delivered. Thank you for choosing us.`
+            step = 2
 
-        } else if(status == "error_message") {
-          ql(".status_container")[0].setAttribute("style", "display:none!important")
-          statusText = "Delivery Error"
-          statusDesc = `<div style="color: red;">
-              <i class="fa fa-warning"></i>&nbsp;${data["error_message.textarea"]}
-            </div>`
+          } else if(status == "error_message") {
+            ql(".status_container")[0].setAttribute("style", "display:none!important")
+            statusText = "Delivery Error"
+            statusDesc = `<div style="color: red;">
+                <i class="fa fa-warning"></i>&nbsp;${data["error_message.textarea"]}
+              </div>`
 
-        } else {
-          statusText = "N/A"
-          statusDesc = "N/A"
-        }
+          } else {
+            statusText = "N/A"
+            statusDesc = "N/A"
+          }
 
-        if(step != -1) {
-          const circles = ql(".imgcircle2")
-          const lines = ql(".status_line")
-          const lines_pc = ql(".status_line_pc")
-          for (var i = 0; i < circles.length; i++) {
-            const circle = circles[i]
-            if(i <= step) {
-              circle.setAttribute("style", "background:#00aee6")
-              if(i != 0) {
-                lines[i - 1].setAttribute("style", "background:#00aee6")
-                lines_pc[i - 1].setAttribute("style", "background:#00aee6")
-              }
+          if(step != -1) {
+            const circles = ql(".imgcircle2")
+            const lines = ql(".status_line")
+            const lines_pc = ql(".status_line_pc")
+            for (var i = 0; i < circles.length; i++) {
+              const circle = circles[i]
+              if(i <= step) {
+                circle.setAttribute("style", "background:#00aee6")
+                if(i != 0) {
+                  lines[i - 1].setAttribute("style", "background:#00aee6")
+                  lines_pc[i - 1].setAttribute("style", "background:#00aee6")
+                }
 
-            } else {
-              circle.setAttribute("style", "background:#bfbfbf")
-              if(i != 0) {
-                lines[i - 1].setAttribute("style", "background:#bfbfbf")
-                lines_pc[i - 1].setAttribute("style", "background:#bfbfbf")
+              } else {
+                circle.setAttribute("style", "background:#bfbfbf")
+                if(i != 0) {
+                  lines[i - 1].setAttribute("style", "background:#bfbfbf")
+                  lines_pc[i - 1].setAttribute("style", "background:#bfbfbf")
+                }
               }
             }
           }
-        }
 
-        document.querySelector('#tracking_id').textContent = orderNo;
-        document.querySelector('#package').textContent = package;
-        document.querySelector('#status_text').textContent = statusText;
-        document.querySelector('#status_desc').innerHTML = statusDesc;
-        document.querySelector('#shippment_date').textContent = shipmentDate;
-        document.querySelector('#destination_address').textContent = destination;
-        location.href = "#track_info"
+          document.querySelector('#tracking_id').textContent = orderNo;
+          document.querySelector('#package').textContent = package;
+          document.querySelector('#status_text').textContent = statusText;
+          document.querySelector('#status_desc').innerHTML = statusDesc;
+          document.querySelector('#shippment_date').textContent = shipmentDate;
+          document.querySelector('#destination_address').textContent = destination;
+          location.href = "#track_info"
+
+        } else {
+          // Hide the before-track view
+          var beforeTrackView = document.getElementById('before-track');
+          beforeTrackView.style.display = 'none';
+
+          // Show the track_info view
+          var trackInfoView = document.getElementById('track_info');
+          trackInfoView.style.display = 'flex';
+
+          var waterMark = document.getElementById('water_mark');
+          if(data.is_freemium) {
+            waterMark.style.display = "block"
+
+          } else {
+            waterMark.style.display = "none"
+          }
+
+          // Fill in information in the track_info view with the data
+          var orderNo = trackingId//data.invoiceNumber || "N/A";
+          var package = data.packageContent || "N/A";
+          var shipmentDate = data.shipmentDate ? formatDate(data.shipmentDate) : "N/A";
+          var expectedDate = data.expectedArrivalDate ? formatDate(data.expectedArrivalDate) : "N/A";
+          var destination = data.packageDestinationAddress;
+          var status = data.shippingStatus || "N/A";
+          var statusText = ""
+          var statusDesc = ""
+          let step = -1
+          if(status == "processing") {
+            statusText = "Processing Order"
+            statusDesc = `Your shipment order ${orderNo} has been confirmed and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
+            step = 0
+
+          } else if(status == "inTransit") {
+            statusText = "In Transit"
+            statusDesc = `Your shipment order ${orderNo} is out for delivery and is expected to be delivered between ${shipmentDate} and ${expectedDate}.`
+            step = 1
+
+          } else if(status == "delivered") {
+            statusText = "Order Delivered"
+            statusDesc = `Your shipment order ${orderNo} has been delivered. Thank you for choosing us.`
+            step = 2
+
+          } else if(status == "errorMessage") {
+            ql(".status_container")[0].setAttribute("style", "display:none!important")
+            statusText = "Delivery Error"
+            statusDesc = `<div style="color: red;">
+                <i class="fa fa-warning"></i>&nbsp;${data.errorMessage}
+              </div>`
+
+          } else {
+            statusText = "N/A"
+            statusDesc = "N/A"
+          }
+
+          if(step != -1) {
+            const circles = ql(".imgcircle2")
+            const lines = ql(".status_line")
+            const lines_pc = ql(".status_line_pc")
+            for (var i = 0; i < circles.length; i++) {
+              const circle = circles[i]
+              if(i <= step) {
+                circle.setAttribute("style", "background:#00aee6")
+                if(i != 0) {
+                  lines[i - 1].setAttribute("style", "background:#00aee6")
+                  lines_pc[i - 1].setAttribute("style", "background:#00aee6")
+                }
+
+              } else {
+                circle.setAttribute("style", "background:#bfbfbf")
+                if(i != 0) {
+                  lines[i - 1].setAttribute("style", "background:#bfbfbf")
+                  lines_pc[i - 1].setAttribute("style", "background:#bfbfbf")
+                }
+              }
+            }
+          }
+
+          document.querySelector('#tracking_id').textContent = orderNo;
+          document.querySelector('#package').textContent = package;
+          document.querySelector('#status_text').textContent = statusText;
+          document.querySelector('#status_desc').innerHTML = statusDesc;
+          document.querySelector('#shippment_date').textContent = shipmentDate;
+          document.querySelector('#destination_address').textContent = destination;
+          location.href = "#track_info"
+        }
       }
 
       // Format the date from seconds to a human-readable format
