@@ -745,6 +745,17 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="js/main.js"></script>
     <script>
+      // Function to fetch data from a given URL
+      async function fetchData(url) {
+          const response = await fetch(url);
+          const resp = await response.json();
+
+          if (!response.ok) {
+              throw new Error(resp?.error || "A server error occurred. Please try again later.");
+          }
+          return resp;
+      }
+
       function isTracking(yes) {
           var trackBtn = document.getElementById('trackBtn');
 
